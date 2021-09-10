@@ -303,15 +303,6 @@ class GSC02(serial.Serial):
         --------
         >>> set_speed(2, (100, 100), (200, 1000), (1000, 200))
         """
-        if type(spd_min) == int:
-            spd_min = (spd_min, spd_min)
-
-        if type(spd_max) == int:
-            spd_max = (spd_max, spd_max)
-
-        if type(acceleration_time) == int:
-            acceleration_time = (acceleration_time, acceleration_time)
-
         r = spd_range
         spd11, spd12 = spd_min
         spd21, spd22 = spd_max
