@@ -24,15 +24,22 @@ class GSC02(serial.Serial):
             return self.readline().decode()[:-2]  # -2: 文字列に改行コードが含まれるため，それ以外を抜き出す．            
         else:
             return self.is_last_command_success
-
-    @property
-    def position(self, axis: Union[int, str]) -> Union[int, Sequence[int]]:
+    
+    def get_position(self, axis: Union[int, str]) -> Union[int, Sequence[int]]:
         if axis in [1, "1"]:
             return self.get_status1()[0]
         elif axis in [2, "2"]:
             return self.get_status1()[1]
         else:
             return self.get_status1()[:2]
+
+    @property
+    def position1(self) -> int:
+        return self.get_position(axis=1)
+    
+    @property
+    def position2(self) -> int:
+        return self.get_position(axis=2)
 
     @property
     def ack1(self) -> str:

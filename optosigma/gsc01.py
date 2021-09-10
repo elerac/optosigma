@@ -25,10 +25,13 @@ class GSC01(serial.Serial):
         return (      True if return_msg == "OK"
                 else False if return_msg == "NG" 
                 else return_msg)
+                
+    def get_position(self) -> int:
+      return self.get_status1()[0]
 
     @property
     def position(self) -> int:
-        return self.get_status1()[0]
+        return self.get_position()
 
     @property
     def ack1(self) -> str:
