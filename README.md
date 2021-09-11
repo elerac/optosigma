@@ -34,7 +34,7 @@ controller.return_origin()
 controller.sleep_until_stop()
 ```
 
-Move stage 1000 pulses int the positive direction (M and G command) and wait.
+Move stage +1000 pulses (M and G command) and wait.
 ```python
 controller.position += 1000
 controller.sleep_until_stop()
