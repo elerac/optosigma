@@ -1,53 +1,61 @@
 # OptoSigma Motorized Stages Control
 
-[シグマ光機の自動ステージ](https://jp.optosigma.com/ja_jp/motorized-stages.html)をPythonから動かします．研究室用に作成．
+This project provides wrappers to control [OptoSigma (Sigma-Koki) motorized stages](https://jp.optosigma.com/en_jp/motorized-stages.html) in Python. The wrapper is designed for 1) controllers and 2) stages.
 
-## 対応機種
-### コントローラ
-- 1軸ステージコントローラ / GSC-01 [[Web]](https://jp.optosigma.com/ja_jp/motorized-stages/controllers-drivers/single-axis-stage-controller/gsc-01.html) [[Manual]](https://jp.optosigma.com/html/jp/software/motorize/manual_jp/GSC-01.pdf)
-- 2軸ステージコントローラ / GSC-02 [[Web]](https://jp.optosigma.com/ja_jp/motorized-stages/controllers-drivers/2-axis-stage-controller-half-step/gsc-02.html) [[Manual]](https://jp.optosigma.com/html/jp/software/motorize/manual_jp/GSC-02.pdf) 
+(1) The controller type wrapper sends commands to the controller (*i.e.*, GSC-01 and GSC-02) through [pySerial](https://github.com/pyserial/pyserial). It supports all commands of the SHOT series and provides practical methods and attributes.
 
-### ステージ
-- 自動回転ステージ / OSMS-60YAW [[Web]](https://jp.optosigma.com/ja_jp/osms-60yaw.html) [[PDF]](https://jp.optosigma.com/html/ja/page_pdf/SGSP-40_60YAW.pdf)
-- 自動偏光子ホルダーφ１００用 / PWA-100 [[Web]](http://www.twin9.co.jp/product/holders-list/mirror-list-2-2/pwa-100/)
+(2) The stage type wrapper inherits the controller type wrapper. Hence, you can send not only basic commands but also use stage-specific methods and attributes.
 
-## 必要なPythonモジュール
-* [pySerial](https://github.com/pyserial/pyserial)
+## Supported Controllers and Stages
+| [GSC-01](https://jp.optosigma.com/en_jp/motorized-stages/controllers-drivers/single-axis-stage-controller/gsc-01.html) | [GSC-02](https://jp.optosigma.com/en_jp/motorized-stages/controllers-drivers/2-axis-stage-controller-half-step/gsc-02.html) | [OSMS-60YAW](https://jp.optosigma.com/en_jp/catalog/product/view/id/12617/s/osms-60yaw/category/456/) | [PWA-100](http://www.twin9.co.jp/product/holders-list/mirror-list-2-2/pwa-100/) | 
+| :-: | :-: | :-: | :-: |
+| ![](documents/GSC-01.jpg) | ![](documents/GSC-02.jpg)| ![](documents/OSMS-60YAW.jpg)| ![](documents/PWA-100.jpg) | 
+| Controller | Controller | Stage | Stage |
+| [GSC-01.md](documents/GSC-01.md) | [GSC-02.md](documents/GSC-02.md) | [OSMS-60YAW.md](docyments/OSMS-60YAW.md) | [PAW-100.md](documents/PWA-100.md) |
+| [[Manual]](https://jp.optosigma.com/html/en_jp/software/motorize/manual_en/GSC-01_En.pdf) | [[Manual]](https://jp.optosigma.com/html/en_jp/software/motorize/manual_en/GSC-02.pdf) | | | 
+| | | | [[Video]](https://youtu.be/dfmbfFGqxJw) |
 
-## 使い方
+## Requirement
+* [pyserial](https://github.com/pyserial/pyserial)
 
-### 回転ステージ（PWA100, OSMS-60YAW）
-#### インスタンスの作成
-インスタンスの作成時に接続要求が行われます．コンストラクタに渡すシリアルポート名は，環境によって下の例と違うため．自分の環境に応じて適宜確認してください．
+## Short Introduction
+
+### Basic Usage of GSC01 class
+Open port at baudrate=9600, bytesize=8, parity=NONE, stopbits=1, timeout=forever. Other arguments follow [pySerial serial.Serial](https://pythonhosted.org/pyserial/pyserial_api.html).
 ```python
-from optosigma import PWA100
-polarizer = PWA100("/dev/tty.usbserial-FTRWB1RN")
+from optosigma import GSC01
+port = "/dev/tty.usbserial-FTRWB1RN"  # depends on your environment
+controller = GSC01(port)
 ```
 
+Return to mechanical origin (H command) and wait.
 ```python
-from optosigma import OSMS60YAW
-polarizer = OSMS60YAW("/dev/tty.usbserial-FTRWB1RN")
+controller.return_origin()
+controller.sleep_until_stop()
 ```
 
-#### リセット
-ステージを機械原点に復帰させます．
+Move stage 1000 pulses int the positive direction (M and G command) and wait.
 ```python
-polarizer.reset()
+controller.position += 1000
+controller.sleep_until_stop()
 ```
 
-#### 回転角度
-`degree` は実際のステージの回転角度と連動しています．
+Get stage status.
 ```python
-print(polarizer.degree)  # 現在の回転角度を取得
-polarizer.degree = 90    # 回転角度が90[deg]になるように回転
-polarizer.degree += 60   # 回転角度が現在の角度から+60[deg]になるように回転
+print(controller.position)
+# 1000
+print(controller.is_ready)
+# True
 ```
 
-#### 移動中に別の動作を行う
-`reset`や`degree`でのステージの移動において，デフォルトでは移動が完了するまで待つ処理を行っています．移動中にも別の処理を行いたい場合は，メンバ変数`is_sleep_until_stop`を`False`に設定してください．
+Stop stage (L command).
 ```python
-polarizer.is_sleep_until_stop = False  # 移動完了を待つフラグをFalseにする
-polarizer.degree += 180  # 移動開始（移動完了を待たずに次の処理に行く）
-"""ここに移動中に行う処理を書く"""
-polarizer.sleep_until_stop()  # 明示的に移動完了を待つ
+controller.decelerate_stop()
 ```
+
+### Other Classes
+For more detail, check the following documents.
+- [GSC-01.md](documents/GSC-01.md)
+- [GSC-02.md](documents/GSC-02.md)
+- [OSMS-60YAW.md](docyments/OSMS-60YAW.md)
+- [PAW-100.md](documents/PWA-100.md)
