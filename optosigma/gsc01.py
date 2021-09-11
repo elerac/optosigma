@@ -2,40 +2,39 @@ import time
 from typing import Tuple, Union
 import serial
 
-class GSC01(serial.Serial):
-    def raw_command(self, cmd: str) -> Union[bool, str]:
-        """コントローラにコマンドを送信
 
-        成功すると"OK"，失敗すると"NG"がコントローラ側から送られてくる．
-        そこで，"OK"はTrue，"NG"はFalseと変換して返す．
-        例外として，"OK"や"NG"以外の文字列が送られてきた場合は，そのままの文字列を返す．
+class GSC01(serial.Serial):
+    """Wrapper for GSC-01 controller"""
+
+    def raw_command(self, cmd: str) -> Union[bool, str]:
+        """Send command to controller
 
         Parameters
         ----------
         cmd : str
-            コマンドの内容は，GSC-01の取扱説明書を参考にすること．
-
+            Command
+            
         Returns
         -------
         ret : bool or str
-            OKなら``True``，NGなら``False``
+            Whether the command is a success or not.
+            If the response value is neither "OK" nor "NG", the raw response value is returned.
         """
         self.write(cmd.encode())
         self.write(b"\r\n")
-        return_msg = self.readline().decode()[:-2]  # -2: 文字列に改行コードが含まれるため，それ以外を抜き出す．
+        return_msg = self.readline().decode()[:-2]  # -2: Remove terminator characters (CR + LF)
         return (      True if return_msg == "OK"
                 else False if return_msg == "NG" 
                 else return_msg)
-                
-    def get_position(self) -> int:
-      return self.get_status1()[0]
 
     @property
     def position(self) -> int:
-        return self.get_position()
+        """Current stage position"""
+        return self.get_status1()[0]
 
     @position.setter
     def position(self, target_position: int):
+        """Move stage to target position"""
         current_position = self.position
         relative_position = target_position - current_position
         self.set_relative_pulse(relative_position)
@@ -43,32 +42,34 @@ class GSC01(serial.Serial):
 
     @property
     def ack1(self) -> str:
-        """
-        ACK1:  X  コマンドエラー
-               K  コマンド正常受付
+        """ACK1
+
+        X  Command error
+        K  Command accepted normaly
         """
         return self.get_status1()[1]
 
     @property
     def ack2(self) -> str:
-        """
-        ACK2:  L  リミットセンサで停止
-               K  正常停止
+        """ACK2
+        
+        L  LS stop
+        K  Normal stop
         """
         return self.get_status1()[2]
 
     @property
     def ack3(self) -> str:
-        """
-        ACK3:  B  Busy 状態
-               R  Ready 状態
+        """ACK3
+        
+        B  Busy status
+        R  Ready status
         """
         return self.get_status2()
 
     @property
     def is_ready(self) -> bool:
-        """ステージがReady状態かをチェック
-        """
+        """Check whether stage is ready or not"""
         ack3 = self.ack3
         if ack3 == "R":
             return True
@@ -77,64 +78,70 @@ class GSC01(serial.Serial):
 
     @property
     def is_last_command_success(self) -> bool:
-        """最後に実行したコマンドが正常受け付けられたかをチェック
-        """
+        """Check whether last command is success or not"""
         ack1 = self.ack1
         if ack1 == "K":
             return True
         elif ack1 == "X":
             return False
 
-    def sleep_until_stop(self):
-        """ステージが停止するまで待つ"""
+    def sleep_until_stop(self) -> None:
+        """Sleep until stage stops"""
         while not self.is_ready:
             time.sleep(0.01)
 
     def return_origin(self) -> bool:
-        """H コマンド(機械原点復帰命令)
+        """H command: Return to Mechanical Origin
 
-        ステージにある機械原点を検出し、その位置を原点とします。
-        機械原点を検出後に座標値は 0 となります。
-        移動速度は固定で S:500pps、F:5000pps、R:200mS となります。
-        原点復帰動作中に停止命令が行われた場合、原点復帰動作は中断します。
-        原点復帰動作中に定められたシーケンス以外のリミットセンサを検出した場合、原点復帰動作を中断します。
-        機械原点復帰動作中は停止命令と確認命令以外は受け付けません。リミットセンサ検出時には 減速動作を行いません。
-        
-        駆動方向が正転の場合のリミットセンサは次のように割り当てられます。  
-          1)LS0  CCW(+)
-          2)LS1  CW(-)
-        駆動方向が逆転の場合のリミットセンサは次のように割り当てられます。  
-          1)LS0  CCW(-)
-          2)LS1  CW(+)
-        励磁が OFF の場合、エラーになり原点復帰動作は行われません。
+        This command is used to detect the mechanical origin for a stage and set that position as the origin. 
+        The moving speed S: 500pps, F: 5000pps, R: 200mS. 
+        Running a stop command during the homing operation suspends thes operation.  
+        Limit sensor’s detection unplanned in the sequence during the homing operation suspends the operation.
+        Any commands except the stop command or checking command are not acceptable during the homing operation. 
+        Deceleration is not available if the limit sensor is activated.
+        For driving in the normal rotation, the limit sensors are assigned as follows.
+             1) LS0  CCW(+)
+             2) LS1  CW(-)
+        For driving in the reverse rotation, the limit sensors are assigned as follows.
+             1) LS0  CCW(-)
+             2) LS1  CW(+)
+        If motor-free, an error is generated to inhibit the homing operation.
 
-        ・コマンド形式
-          H:1     機械原点復帰実施 
-          H:W     機械原点復帰実施
+        Returns
+        -------
+        ret : bool
+            Whether the command is a success or not.
         """
         return self.raw_command("H:1")
         
     def set_relative_pulse(self, pulse: int) -> bool:
-        """M コマンド(相対移動パルス数設定命令)
+        """M command: Set number of pulses for relative travel
 
-        ステージの移動量と移動方向を設定します。
-        本コマンド実行後、駆動命令の実行で実際のステージ駆動を行います。
-        動作は速度設定命令で設定された加減速動作を行います。
-        駆動命令を実行せずに本命令を続けて実行した場合は最後に実行した本命令又は“絶対移動パルス設定命令”が有効になります。
-        また、“原点復帰命令”や“ジョグ命令”、“停止命令”が実行された場合、 本命令で設定された値は無効になります。
-        移動後の座標が仕様範囲(± 16,777,215)を超える場合はコマンドエラーになります。
-        励磁が OFF の状態で本命令を実行した場合、コマンドエラーになります。
-        
-        ・コマンド形式
-          M:nmPx
-        
-        ・パラメータ
-          n:1又W           動作軸名 1 又は W を指定して下さい。
-          m:+又は-        　+にて+方向設定、-にて-方向設定
-          x:移動パルス数     0 ~ 16,777,215 の値が設定可能
-          
-        例) M:1+P1000      +方向に 1000 パルス移動を設定
-        　  M:W-P5000      -方向に 5000 パルス移動を設定
+        The command to set the moving distance and direction of the stage. 
+        This device runs this command and then runs the driving command to drive the actual stage. 
+        The stage accelerates/ decelerates as set in the speed setting command. 
+        If this command is repeated without running the driving command, 
+        the last run this command or the ‘Command to set number of pulses for absolute travel’ is effective.
+        If the return to mechanical Origin Command, JOG Command or Stop Command is run, the values set in this command are canceled. 
+        A command error is generated if a coordinate after the move exceeds the specified limit (+/- 16,777,215).
+        While motor-free, running this command causes a command error.
+
+        Parameters
+        ----------
+        pulse : int
+            Moving pulse. Set a number from (+/- 16,777,215)
+
+        Returns
+        -------
+        ret : bool
+            Whether the command is a success or not.
+
+        Examples
+        --------
+        >>> set_relative_pulse(1000)  # Sets 1000pulse move in the positive direction.
+        True
+        >>> set_relative_pulse(-5000)  # Sets 5000pulse move in the negative direction.
+        True
         """
         n = 1
         m = "+" if pulse >= 0 else "-"
@@ -142,26 +149,33 @@ class GSC01(serial.Serial):
         return self.raw_command(f"M:{n}{m}P{x}")
 
     def set_absolute_pulse(self, pulse: int) -> bool:
-        """A コマンド(絶対移動パルス数設定命令)
+        """A command: Set number of pulses for absolute travel
 
-        原点からの座標位置にステージの移動量と移動方向を設定します。
-        本コマンド実行後、駆動命令の実行で実際のステージ駆動を行います。
-        動作は速度設定命令で設定された加減速動作を行います。
-        駆動命令を実行せずに本命令を続けて実行した場合は最後に実行した本命令又は“相対移動パルス設定命令”が有効になります。
-        また、“原点復帰命令”や“ジョグ命令”、“停止命令” が実行された場合、本命令で設定された値は無効になります。
-        移動後の座標が仕様範囲(± 16,777,215)を超える場合はコマンドエラーになります。
-        励磁が OFF の状態で本命令を実行した場合、コマンドエラーになります。
-
-        ・コマンド形式
-          A:nmPx
+        The command to set the moving distance and direction of the stage. 
+        This device runs this command and then runs the driving command to drive the actual stage.
+        The stage accelerates/decelerates as set in the speed setting command.
+        If this command is repeated without running the driving command, 
+        the last run this command or the ‘Command to set number of pulses for Relative travel’ is effective. 
+        If the return to mechanical Origin Command, JOG Command or Stop Command is run, the values set in this command are canceled. 
+        A command error is generated if a coordinate after the move exceeds the specified limit (+/- 16,777,215).
+        While motor-free, running this command causes a command error.
         
-        ・パラメータ
-          n:1又W           動作軸名 1 又は W を指定して下さい。
-          m:+又は-        　+にて+方向設定、-にて-方向設定
-          x:移動パルス数     0 ~ 16,777,215 の値が設定可能
-          
-        例) A:1+P1000      +1000 パルス座標へ移動を設定
-        　  A:W-P5000      -5000 パルス座標へ移動を設定
+        Parameters
+        ----------
+        pulse : int
+            Moving pulse. Set a number from (+/- 16,777,215)
+        
+        Returns
+        -------
+        ret : bool
+            Whether the command is a success or not.
+
+        Examples
+        --------
+        >>> set_absolute_pulse(1000)  # Set a move to coordinate 1000
+        True
+        >>> set_absolute_pulse(-5000)  # Set a move to coordinate -5000
+        True
         """
         n = 1
         m = "+" if pulse >= 0 else "-"
@@ -169,24 +183,31 @@ class GSC01(serial.Serial):
         return self.raw_command(f"A:{n}{m}P{x}")
 
     def jog(self, direction: str) -> bool:
-        """J コマンド(ジョグ運転命令)
+        """J command: JOG Command
 
-        ステージのジョグ運転を設定します。
-        本コマンド実行後、駆動命令の実行で実際のステージ駆動を行います。
-        動作は設定されたジョグ速度で駆動し、加減速動作は行いません。
-        ジョグ速度は“ジョグ運転速度設定命令”で設定します。
-        停止させる場合は、L コマンド(停止命令)にて停止をします。(L コマンドが無い場合は、リミットセンサまで移動してリミットセンサに て停止します。)
-        駆動命令を実行せずに他の移動命令(“相対移動パルス数設定命令”等)を実行した場合、本命令は取り消されます。
-        励磁が OFF の状態で本命令を実行した場合、コマンドエラーになります。
+        Set jog operation for the stage. 
+        This device runs this command and then runs the driving command to drive the actual stage.
+        The stage moves at a preset jog speed without acceleration/deceleration. 
+        The jog speed is set in the ‘JOG Speed Set’ command. 
+        When stop this, stop by L command. (When there is not L command, move to Limit sensor and stop in Limit sensor).
+        Running a different moving command (M command, etc) without running the driving command cancels this command. 
+        While motor-free, running this command causes a command error.
 
-        ・コマンド形式
-          J:nm
+        Parameters
+        ----------
+        direction : str
+             "+": Moves the axis in the positive direction, 
+             "-": Moves the axis in the negative direction
 
-        ・パラメータ
-          n:1又はW     動作軸名 1 又は W を指定して下さい。
-          m:+又は-     +にて+方向設定、-にて-方向設定
+        Returns
+        -------
+        ret : bool
+            Whether the command is a success or not.
 
-        例) J:1+     +方向のジョグ運転を設定
+        Examples
+        --------
+        >>> jog("+")  # Set jog operation in the positive direction.
+        True
         """
         if direction in ["+", "-"]:
             n = 1
@@ -197,78 +218,103 @@ class GSC01(serial.Serial):
             raise ValueError(msg)
 
     def driving(self) -> bool:
-        """G コマンド(駆動命令)
+        """G command: Driving command
 
-        ステージの駆動動作を行います。
-        駆動動作は直前に実行された、“相対 / 絶対移動パルス数設 定命令”、“ジョグ運転命令”に従って行われます。
-        ステージの駆動中、リミットが検出された場合は直ちにステージ駆動を停止します。その際には加減速動作は行いません。
-        移動命令(“相対 / 絶対移動パルス数設定命令”、“ジョグ運転命令”)が実行されないで本命令を実行した場合、コマンドエラーになります。
-        励磁が OFF の状態で本命令を実行した場合、コマンドエラーになります。
+        The command to perform the driving operation of the stage.
+        The stage is driven according to the ‘M command’ / ‘A command’ and ‘J command’ run immediately before. 
+        On detecting a limit, the stage being driven stops immediately without acceleration/deceleration.
+        Running this command without running a moving command (M command/ A command or J command) generates a command error.
+        While motor-free, running this command causes a command error.
         
-        ・コマンド形式
-          G:     駆動開始
-          
-        例) M:1+P1000   
-        　  G:            +方向に 1000 パルス移動する
+        Returns
+        -------
+        ret : bool
+            Whether the command is a success or not.
+
+        Examples
+        --------
+        >>> set_relative_pulse(10000)
+        >>> driving()  # Moves 1000pulse in the positive direction.
+        True
         """
         return self.raw_command("G:")
 
     def decelerate_stop(self) -> bool:
-        """L コマンド(減速停止命令)
+        """L command: Decelerate and stop
 
-        ステージを減速停止させます。
+        When this command is executed, the stage decelerates and stops.
 
-        ・コマンド形式
-          L:1     減速停止 
-          L:W     減速停止
+        Returns
+        -------
+        ret : bool
+            Whether the command is a success or not.
         """
         return self.raw_command("L:1")
 
     def immediate_stop(self) -> bool:
-        """L:E コマンド(即停止命令)
+        """L:E command: Immediate stop
 
-        ステージを即停止させます。
-        非常停止信号の入力時と異なり、励磁の OFF は行いません。
+        Stops the driving of the stage without deceleration.
+        Unlike emergency stop signal input, this command does not motor-free.
 
-        ・コマンド形式
-          L:E     即停止実施
+        Returns
+        -------
+        ret : bool
+            Whether the command is a success or not.
         """
         return self.raw_command("L:E")
 
     def set_logical_zero(self) -> bool:
-        """R コマンド(論理原点設定命令)
+        """R command: Electronic (Logical) Zero set command
 
-        現在の座標を電気(論理)原点に設定します。
-        本コマンド実行後、現在位置は“0”になります。
+        Set the current coordinate to the electronic (logical) zero. 
+        After running this command, the current position is set to ZERO.
 
-        ・コマンド形式
-          R:1     論理原点を設定実施 
-          R:W     論理原点を設定実施
+        Returns
+        -------
+        ret : bool
+            Whether the command is a success or not.
         """
         return self.raw_command("R:1")
 
     def set_speed(self, spd_min: int, spd_max: int, acceleration_time: int) -> bool:
-        """D コマンド(速度設定命令)
+        """D command: Speed setting
 
-        ステージ移動時の最小速度、最大速度、加減速時間を設定します。
-        最小速度は運転速度 S としてステージの起動時の速度です。
-        最大速度は運転速度 F としてステージの最大速度を規定します。
-        これらの単位は[PPS]です。
-        加減速時間は加速時は運転速度 S から運転速度 F までの時間を、減速時は運転速度 F から運転速度 S までの時間を規定します。
-        この単位は[mS]で す。電源投入時には、最小速度(S)500PPS、最大速度(F)5000PPS、加減速時間(R) 200mS が設定されています。(設定プログラムにて、速度初期値を変更した場合は、その値に従います。)
-        最大速度 F は必ず最小速度 S 以上の値を設定して下さい。
-        速度の設定は 100[PPS]単位で行って下さい、100[PPS]未満の値は切り捨てられます。
+        Sets the minimum/maximum speeds and acceleration/deceleration time for moving the stage. 
+        The minimum speed is the driving speed S, the speed when the stage starts. 
+        The maximum speed is the driving speed F that specifies the maximum speed of the stage. 
+        The unit of the speeds is [PPS].
 
-        ・コマンド形式
-          D:nSspd1Fspd2Rspd3
+        Acceleration/deceleration time specifies the acceleration time from the driving speed S to F, 
+        and the deceleration time from F to S. The unit of time is mS.
 
-        ・パラメータ
-          n:1又W                   動作軸名 1 又は W を指定して下さい。
-          spd1:最小速度(S)設定　     設定範囲:100 ~ 20000(単位:PPS) 
-          spd2:最大速度(F)設定　     設定範囲:100 ~ 20000(単位:PPS) 
-          spd3:加減速時間(R)設定     設定範囲:0 ~ 1000(単位:mS)
-          
-        例) D:1S500F5000R200     最小速度 S500[PPS], 最大速度 F5000[PPS], 加減速時間 R200[mS]に設定します。
+        The initial values are as follows:
+          Minimum speed S                     500[PPS]
+          Maximum speed F                     50000[PPS]
+          Acceleration/ Deceleration Time     200[mS]
+        (* If setting Configuration Program, obey the value.)
+
+        Be sure to set the maximum speed F higher than the minimum speed S.
+        Set the speed in 100[PPS]. Values less than 100[PPS] are rounded down.
+
+        Parameters
+        ----------
+        spd_min: int
+            Minimum Speed. Set a number from 100-20000. [PPS]
+        spd_max: int 
+            Maximum Speed. Set a number from 100-20000. [PPS]
+        acceleration_time : int
+            Acceleration/Deceleration time. Set a number from 0-1000. [mS]
+
+        Returns
+        -------
+        ret : bool
+            Whether the command is a success or not.
+
+        Examples
+        --------
+        >>> set_speed(500, 50000, 200)  # Set the minimum speed to 500[PPS], the maximum speed to 5000[PPS], and the acceleration/deceleration time to 200[mS].
+        True
         """
         n = 1
         spd1 = spd_min
@@ -277,40 +323,48 @@ class GSC01(serial.Serial):
         return self.raw_command(f"D:{n}S{spd1}F{spd2}R{spd3}")
 
     def energize_motor(self, energize: bool) -> bool:
-        """C コマンド(励磁 ON/OFF 命令)
+        """C command: Motor Free/ Hold Command
 
-        モータを励磁又は、励磁を解除する命令です。
+        Deenergize (OFF)/ energize (ON) the motor.
 
-        ・コマンド形式
-          C:nm
+        Parameters
+        ----------
+        energize : bool
+            True: hold motor
+            False: free motor
 
-        ・パラメータ
-          n:1又W　     動作軸名 1 又は W を指定して下さい。
-          m:0又は1     0 にて励磁 OFF、1 にて励磁 ON
-          
-        例) C:10     モータを励磁 OFF に設定
+        Returns
+        -------
+        ret : bool
+            Whether the command is a success or not.
+
+        Examples
+        --------
+        >>> energize_motor(False)  # Free motor
+        True
         """
         n = 1
         m = 1 if energize else 0
         return self.raw_command(f"C:{n}{m}")
 
     def get_status1(self) -> Tuple[int, str, str, str]:
-        """Q コマンド(ステータス確認 1 命令)
+        """ Q command: Status1
 
-        本機からステージ動作状況や座標値等を返送します。
+        On receipt of this command, the controller returns the coordinate and the current state.
 
-        ・コマンド形式
-          Q:
-
-        ・リターン  -  1000、ACK1、ACK2、ACK3 
-                   座標値
-                        ACK1:  X  コマンドエラー
-                               K  コマンド正常受付
-                        ACK2:  L  リミットセンサで停止
-                               K  正常停止
-                        ACK3:  B  Busy 状態
-                               R  Ready 状態
-        *)返送データの座標値は符号を含めて 10 桁固定です。(符号左詰め、座標値右詰め)
+        Returns
+        -------
+        position : int
+            current position
+        ack1 : str
+            X  Command error or 
+            K  Command accepted normaly
+        ack2 : str
+            L  LS stop
+            K  Normal stop
+        ack3 : str
+            B  Busy status
+            R  Ready status
         """
         status = self.raw_command("Q:").split(",")
         position = int(status[0].replace(" ", ""))
@@ -320,33 +374,32 @@ class GSC01(serial.Serial):
         return position, ack1, ack2, ack3
 
     def get_status2(self) -> str:
-        """! コマンド(ステータス確認 2 命令)
-
-        本機から ACK3 の状況(ステージ移動状況)を返送します。
-
-        ・コマンド形式
-          !:
+        """! command: Status2
         
-        ・リターン
-          B  Busy 状態
-          R  Ready 状態
+        On receipt of this command, the controller returns the stage operating status.
+
+        Returns
+        -------
+        ack3 : str
+            B  Busy status
+            R  Ready status
         """
         return self.raw_command("!:")
 
     def get_version(self, firmware_type: str="ROM") -> str:
-        """? コマンド(内部情報取得命令)
+        """? command: Internal Information
 
-        ・コマンド形式
-          ?:V
+        Returns the version number of firmware in this controller.
 
-        ・リターン例 
-          V1.00     ROM バージョン Ver1.00
-          
-        ・コマンド形式
-          ?:- 
-        
-        ・リターン例 
-          001     リビジョン番号 001
+        Parameters
+        ----------
+        firmware_type: str
+            Firmware type. "ROM" or "revision".
+
+        Returns
+        -------
+        version : str
+            ROM Version or Revision number
         """
         if firmware_type.lower() == "rom":
             return self.raw_command("?:V")
@@ -357,29 +410,42 @@ class GSC01(serial.Serial):
             raise ValueError(msg)
 
     def io_output(self, a: int) -> bool:
-        """O コマンド(I/O 出力命令)
+        """O command: I/O Output
 
-        I/O 出力ポートの状態を設定します。ポートの状態は 0 ~ 15 までの数値で設定します。
+        Sets the status of the I/O interface output ports. 
+        The status of a port is set to a number from 0-15.
         
-        ・コマンド形式
-          O:a
+        Parameters
+        ----------
+        a : int
+            0-15 
+        
+        Returns
+        -------
+        ret : bool
+            Whether the command is a success or not.
 
-        ・パラメータ
-          a:0 ~ 15 
-
-        例) O:1     I/O 出力ポート DO0 を“ON”にします
+        Examples
+        --------
+        >>> io_output(1)  # Sets the I/O interface output port DO0 to ‘ON’.
+        True
         """
         return self.raw_command(f"O:{a}")
 
     def io_input(self) -> int:
-        """I コマンド(I/O 入力確認命令)
+        """I command: I/O Input
 
-        I /O 入力ポートの状態を確認します。ポートの状態は 0 ~ 15 までの数値で返信します。
+        Returns the current status of the I/O input ports. 
+        The status of a port is returned in a number from 0-15.
 
-        ・コマンド形式
-          I:
+        Returns
+        -------
+        a : int 
+            0-15 
 
-        例) I:  
-        　  リターン:2  I/O 入力ポート DI1 のみ“ON”です
+        Examples
+        --------
+        >>> io_input()
+        2  # Only DI1 is ‘ON’.
         """
         return int(self.raw_command("I:"))
