@@ -26,21 +26,35 @@ class GSC02(serial.Serial):
         else:
             return self.is_last_command_success
     
-    def get_position(self, axis: Union[int, str]) -> Union[int, Sequence[int]]:
+    def _get_position(self, axis: Union[int, str]) -> int:
         if axis in [1, "1"]:
             return self.get_status1()[0]
         elif axis in [2, "2"]:
             return self.get_status1()[1]
-        else:
-            return self.get_status1()[:2]
+
+    def _set_position(self, target_position: int, axis: Union[int, str]) -> bool:
+        current_position = self._get_position(axis)
+        relative_position = target_position - current_position
+
+        ret1 = self.set_relative_pulse(relative_position, axis=axis)
+        ret2 = self.driving()
+        return all([ret1, ret2])
 
     @property
     def position1(self) -> int:
-        return self.get_position(axis=1)
+        return self._get_position(axis=1)
+    
+    @position1.setter
+    def position1(self, target_position):
+        self._set_position(target_position, axis=1)
     
     @property
     def position2(self) -> int:
-        return self.get_position(axis=2)
+        return self._get_position(axis=2)
+
+    @position2.setter
+    def position2(self, target_position):
+        self._set_position(target_position, axis=2)
 
     @property
     def ack1(self) -> str:

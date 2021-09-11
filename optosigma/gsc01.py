@@ -34,6 +34,13 @@ class GSC01(serial.Serial):
     def position(self) -> int:
         return self.get_position()
 
+    @position.setter
+    def position(self, target_position: int):
+        current_position = self.position
+        relative_position = target_position - current_position
+        self.set_relative_pulse(relative_position)
+        self.driving()
+
     @property
     def ack1(self) -> str:
         """
