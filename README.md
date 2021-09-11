@@ -11,7 +11,7 @@ This project provides wrappers to control [OptoSigma (Sigma-Koki) motorized stag
 | :-: | :-: | :-: | :-: |
 | ![](https://jp.optosigma.com/media/catalog/product/cache/abae91551e7847ba068353fb78d14f29/g/s/gsc-01_p_pqyav390g4670kee.jpg) | ![](https://jp.optosigma.com/media/catalog/product/cache/abae91551e7847ba068353fb78d14f29/g/s/gsc-02_p_1uaksjmt1bqcnadg.jpg) | ![](https://jp.optosigma.com/media/catalog/product/cache/abae91551e7847ba068353fb78d14f29/o/s/osms-60yaw_p_hg82pv9mibjyav8t.jpg) |  |
 | Controller | Controller | Stage | Stage |
-| [GSC-01.md](documents/GSC-01.md) | [GSC-02.md](documents/GSC-02.md) | [OSMS-60YAW.md](documents/OSMS-60YAW.md) | [PAW-100.md](documents/PWA-100.md) |
+| [[README]](documents/GSC-01.md) | [[README]](documents/GSC-02.md) | [[README]](documents/OSMS-60YAW.md) | [[README]](documents/PWA-100.md) |
 | [[Manual]](https://jp.optosigma.com/html/en_jp/software/motorize/manual_en/GSC-01_En.pdf) | [[Manual]](https://jp.optosigma.com/html/en_jp/software/motorize/manual_en/GSC-02.pdf) | | | 
 | | | | [[Video]](https://youtu.be/dfmbfFGqxJw) |
 
@@ -23,42 +23,28 @@ This project provides wrappers to control [OptoSigma (Sigma-Koki) motorized stag
 pip install git+https://github.com/elerac/optosigma
 ```
 
-## Short Introduction
+## Usage
 
-### Basic Usage of GSC01 class
-Open port at baudrate=9600, bytesize=8, parity=NONE, stopbits=1, timeout=forever. Other arguments follow [pySerial serial.Serial](https://pythonhosted.org/pyserial/pyserial_api.html).
+Basic usage of GSC01 class:
 ```python
 from optosigma import GSC01
+
 port = "/dev/tty.usbserial-FTRWB1RN"  # depends on your environment
 controller = GSC01(port)
-```
 
-Return to mechanical origin (H command) and wait.
-```python
+# Return to mechanical origin 
 controller.return_origin()
 controller.sleep_until_stop()
-```
 
-Move stage +1000 pulses (M and G command) and wait.
-```python
+# Move stage +1000 pulses
 controller.position += 1000
 controller.sleep_until_stop()
+
+# Get stage status
+print(controller.position)  # 1000
+print(controller.is_ready)  # True
 ```
 
-Get stage status.
-```python
-print(controller.position)
-# 1000
-print(controller.is_ready)
-# True
-```
-
-Stop stage (L command).
-```python
-controller.decelerate_stop()
-```
-
-### Other Classes
 For more detail, check the following documents.
 - [GSC-01.md](documents/GSC-01.md)
 - [GSC-02.md](documents/GSC-02.md)
