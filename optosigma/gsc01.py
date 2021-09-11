@@ -1,3 +1,4 @@
+import time
 from typing import Tuple, Union
 import serial
 
@@ -76,6 +77,11 @@ class GSC01(serial.Serial):
             return True
         elif ack1 == "X":
             return False
+
+    def sleep_until_stop(self):
+        """ステージが停止するまで待つ"""
+        while not self.is_ready:
+            time.sleep(0.01)
 
     def return_origin(self) -> bool:
         """H コマンド(機械原点復帰命令)

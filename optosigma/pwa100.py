@@ -17,11 +17,6 @@ class PWA100(GSC01):
     def stop(self):
         return self.decelerate_stop()
 
-    def sleep_until_stop(self):
-        """ステージが停止するまで待つ"""
-        while not self.is_ready:
-            time.sleep(0.01)
-
     @property
     def degree(self) -> float:
         """ステージの回転角度[deg]を返す"""
