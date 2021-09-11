@@ -11,7 +11,7 @@ This project provides wrappers to control [OptoSigma (Sigma-Koki) motorized stag
 | :-: | :-: | :-: | :-: |
 | ![](documents/GSC-01.jpg) | ![](documents/GSC-02.jpg)| ![](documents/OSMS-60YAW.jpg)| ![](documents/PWA-100.jpg) | 
 | Controller | Controller | Stage | Stage |
-| [GSC-01.md](documents/GSC-01.md) | [GSC-02.md](documents/GSC-02.md) | [OSMS-60YAW.md](docyments/OSMS-60YAW.md) | [PAW-100.md](documents/PWA-100.md) |
+| [GSC-01.md](documents/GSC-01.md) | [GSC-02.md](documents/GSC-02.md) | [OSMS-60YAW.md](documents/OSMS-60YAW.md) | [PAW-100.md](documents/PWA-100.md) |
 | [[Manual]](https://jp.optosigma.com/html/en_jp/software/motorize/manual_en/GSC-01_En.pdf) | [[Manual]](https://jp.optosigma.com/html/en_jp/software/motorize/manual_en/GSC-02.pdf) | | | 
 | | | | [[Video]](https://youtu.be/dfmbfFGqxJw) |
 
@@ -57,5 +57,5 @@ controller.decelerate_stop()
 For more detail, check the following documents.
 - [GSC-01.md](documents/GSC-01.md)
 - [GSC-02.md](documents/GSC-02.md)
-- [OSMS-60YAW.md](docyments/OSMS-60YAW.md)
+- [OSMS-60YAW.md](documents/OSMS-60YAW.md)
 - [PAW-100.md](documents/PWA-100.md)
