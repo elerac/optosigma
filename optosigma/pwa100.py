@@ -1,4 +1,3 @@
-import time
 from .gsc01 import GSC01
 
 class PWA100(GSC01):

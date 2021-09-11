@@ -1,4 +1,3 @@
-import time
 from .gsc02 import GSC02
 
 class OSMS60YAW(GSC02):
