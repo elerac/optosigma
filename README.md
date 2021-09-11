@@ -9,7 +9,7 @@ This project provides wrappers to control [OptoSigma (Sigma-Koki) motorized stag
 ## Supported Controllers and Stages
 | [GSC-01](https://jp.optosigma.com/en_jp/motorized-stages/controllers-drivers/single-axis-stage-controller/gsc-01.html) | [GSC-02](https://jp.optosigma.com/en_jp/motorized-stages/controllers-drivers/2-axis-stage-controller-half-step/gsc-02.html) | [OSMS-60YAW](https://jp.optosigma.com/en_jp/catalog/product/view/id/12617/s/osms-60yaw/category/456/) | [PWA-100](http://www.twin9.co.jp/product/holders-list/mirror-list-2-2/pwa-100/) | 
 | :-: | :-: | :-: | :-: |
-| ![](documents/GSC-01.jpg) | ![](documents/GSC-02.jpg)| ![](documents/OSMS-60YAW.jpg)| ![](documents/PWA-100.jpg) | 
+| ![](https://jp.optosigma.com/media/catalog/product/cache/abae91551e7847ba068353fb78d14f29/g/s/gsc-01_p_pqyav390g4670kee.jpg) | ![](https://jp.optosigma.com/media/catalog/product/cache/abae91551e7847ba068353fb78d14f29/g/s/gsc-02_p_1uaksjmt1bqcnadg.jpg) | ![](https://jp.optosigma.com/media/catalog/product/cache/abae91551e7847ba068353fb78d14f29/o/s/osms-60yaw_p_hg82pv9mibjyav8t.jpg) |  |
 | Controller | Controller | Stage | Stage |
 | [GSC-01.md](documents/GSC-01.md) | [GSC-02.md](documents/GSC-02.md) | [OSMS-60YAW.md](documents/OSMS-60YAW.md) | [PAW-100.md](documents/PWA-100.md) |
 | [[Manual]](https://jp.optosigma.com/html/en_jp/software/motorize/manual_en/GSC-01_En.pdf) | [[Manual]](https://jp.optosigma.com/html/en_jp/software/motorize/manual_en/GSC-02.pdf) | | | 
