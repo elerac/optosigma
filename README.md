@@ -18,6 +18,11 @@ This project provides wrappers to control [OptoSigma (Sigma-Koki) motorized stag
 ## Requirement
 * [pyserial](https://github.com/pyserial/pyserial)
 
+## Installation
+```sh
+pip install git+https://github.com/elerac/optosigma
+```
+
 ## Short Introduction
 
 ### Basic Usage of GSC01 class
