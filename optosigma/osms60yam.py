@@ -6,7 +6,7 @@ class OSMS60YAW(GSC02):
 
     degree_per_pulse = 0.0025  # [deg/pulse] (fixed)
 
-    axis = 1
+    axis = 1  # 1 or 2
 
     def reset(self) -> bool:
         ret =  self.return_origin("-", axis=self.axis)
@@ -20,20 +20,15 @@ class OSMS60YAW(GSC02):
     @property
     def degree(self) -> float:
         """Get current angle [deg]"""
-        position = self.get_position(axis=self.axis)
+        position = getattr(self, f"position{self.axis}")
         degree = self.pos2deg(position)
         return degree
     
     @degree.setter
     def degree(self, target_degree: float):
         """Move stage to target angle [deg]"""
-        current_degree = self.degree
-        target_degree %= 360
-        relative_degree = (target_degree - current_degree) % 360
-        relative_position = self.deg2pos(relative_degree)
-
-        self.set_relative_pulse(relative_position, axis=self.axis)
-        self.driving()
+        target_position = self.deg2pos(target_degree)
+        setattr(self, f"position{self.axis}", target_position)
         if self.is_sleep_until_stop:
             self.sleep_until_stop()
 
