@@ -7,13 +7,20 @@ This project provides wrappers to control [OptoSigma (Sigma-Koki) motorized stag
 (2) The stage type wrapper inherits the controller type wrapper. Hence, you can send not only basic commands but also use stage-specific methods and attributes.
 
 ## Supported Controllers and Stages
-| [GSC-01](https://jp.optosigma.com/en_jp/motorized-stages/controllers-drivers/single-axis-stage-controller/gsc-01.html) | [GSC-02](https://jp.optosigma.com/en_jp/motorized-stages/controllers-drivers/2-axis-stage-controller-half-step/gsc-02.html) | [OSMS-60YAW](https://jp.optosigma.com/en_jp/catalog/product/view/id/12617/s/osms-60yaw/category/456/) | [PWA-100](http://www.twin9.co.jp/product/holders-list/mirror-list-2-2/pwa-100/) | 
-| :-: | :-: | :-: | :-: |
-| ![](https://jp.optosigma.com/media/catalog/product/cache/abae91551e7847ba068353fb78d14f29/g/s/gsc-01_p_pqyav390g4670kee.jpg) | ![](https://jp.optosigma.com/media/catalog/product/cache/abae91551e7847ba068353fb78d14f29/g/s/gsc-02_p_1uaksjmt1bqcnadg.jpg) | ![](https://jp.optosigma.com/media/catalog/product/cache/abae91551e7847ba068353fb78d14f29/o/s/osms-60yaw_p_hg82pv9mibjyav8t.jpg) |  |
-| Controller | Controller | Stage | Stage |
-| [[README]](documents/GSC-01.md) | [[README]](documents/GSC-02.md) | [[README]](documents/OSMS-60YAW.md) | [[README]](documents/PWA-100.md) |
-| [[Manual]](https://jp.optosigma.com/html/en_jp/software/motorize/manual_en/GSC-01_En.pdf) | [[Manual]](https://jp.optosigma.com/html/en_jp/software/motorize/manual_en/GSC-02.pdf) | | | 
-| | | | [[Video]](https://youtu.be/dfmbfFGqxJw) |
+| [GSC-01](https://jp.optosigma.com/en_jp/motorized-stages/controllers-drivers/single-axis-stage-controller/gsc-01.html) | [GSC-02](https://jp.optosigma.com/en_jp/motorized-stages/controllers-drivers/2-axis-stage-controller-half-step/gsc-02.html) | [OSMS-60YAW](https://jp.optosigma.com/en_jp/catalog/product/view/id/12617/s/osms-60yaw/category/456/) |
+| :-: | :-: | :-: |
+| ![](documents/GSC-01.jpg) | ![](documents/GSC-02.jpg) | ![](documents/OSMS-60YAW.jpg) |
+| Controller | Controller | Stage | 
+| [[README]](documents/GSC-01.md) | [[README]](documents/GSC-02.md) | [[README]](documents/OSMS-60YAW.md) |
+| [[Manual]](https://jp.optosigma.com/html/en_jp/software/motorize/manual_en/GSC-01_En.pdf) | [[Manual]](https://jp.optosigma.com/html/en_jp/software/motorize/manual_en/GSC-02.pdf) | |
+| | | |
+
+| [OSMS-60A60](https://jp.optosigma.com/en_jp/osms-60a60.html) | [OSMS60-5ZF](https://jp.optosigma.com/en_jp/osms60-5zf.html) | [PWA-100](http://www.twin9.co.jp/product/holders-list/mirror-list-2-2/pwa-100/) | 
+| :-: | :-: | :-: |
+| ![](documents/OSMS-60A60.jpg) | ![](documents/OSMS60-5ZF.jpg) | ![](documents/PWA-100.jpg) | 
+| Stage | Stage | Stage |
+| [[README]](documents/OSMS-60A60.md)| [[README]](documents/OSMS60-5ZF.md) | [[README]](documents/PWA-100.md) |
+| | | [[Video]](https://youtu.be/dfmbfFGqxJw) |
 
 
 ## Installation
@@ -78,6 +85,7 @@ class OSMS60YAW(GSC02):
     def deg2pos(self, degree):
         return int(degree / self.degree_per_pulse)
 
+
 stage = OSMS60YAW("/dev/tty.usbserial-FTRWB1RN", axis=1)
 stage.degree = 60
 stage.degree += 30
@@ -85,3 +93,28 @@ print(stage.degree)  # 90
 ```
 The above sub-class `OSMS60YAW` contains a property `degree`. This property internally converts the position and angle of the rotation stage. Therefore, we can handle the stage angle intuitively.
 
+## Multiple Axis Stage Controller
+GSC-02 controller can handle two stages, but there's only one serial port.
+If we implement a straightforward code, we need to manage two stages with one serial object. It is awkward and reduces the readability of the code.
+
+`GSC02` class provides an easy way to handle multiple stages. Even though you use a single controller, it **seems as if you connect to each stage separately**.
+
+Here is an example of using two controllers (GSC-02) and four stages (OSMS-60YAW, OSMS60-5ZF, OSMS-60A60).
+![](documents/example_multiple_stages.jpg)
+
+```python
+from optosigma import OSMS60YAW, OSMS60A60, OSMS605ZF
+
+port1 = "your port name 1"
+port2 = "your port name 2"
+rot_stage    = OSMS60YAW(port1, axis=1)  # rotation stage
+trans_stage  = OSMS605ZF(port1, axis=2)  # translation stage
+gonio_stage1 = OSMS60A60(port2, axis=1)  # goniometer
+gonio_stage2 = OSMS60A60(port2, axis=2)  # goniometer
+
+rot_stage.degree = 60
+trans_stage.millimeter = 3
+gonio_stage1.degree = 20
+gonio_stage2.degree = 40
+```
+As you can see, the instance objects of each stage are separated. Once you assign a connection (*i.e.*, `port` and `axis`), you can move stages without considering where the stages are connected. When you change the physical connections of the controller or/and stage, the changes in the code are minimal.
