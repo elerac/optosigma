@@ -1,3 +1,4 @@
+import serial
 from .gsc02 import GSC02
 
 
@@ -6,7 +7,23 @@ class OSMS60YAW(GSC02):
 
     degree_per_pulse = 0.0025  # [deg/pulse] (fixed)
 
-    axis = 1  # 1 or 2
+    def __init__(self, 
+                 port=None,
+                 baudrate=9600,
+                 bytesize=serial.EIGHTBITS,
+                 parity=serial.PARITY_NONE,
+                 stopbits=serial.STOPBITS_ONE,
+                 timeout=None,
+                 xonxoff=False,
+                 rtscts=False,
+                 write_timeout=None,
+                 dsrdtr=False,
+                 inter_byte_timeout=None,
+                 exclusive=None,
+                 axis = 1,
+                 **kwargs):
+        super().__init__(port=port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits, timeout=timeout, xonxoff=xonxoff, rtscts=rtscts, write_timeout=write_timeout, dsrdtr=dsrdtr, inter_byte_timeout=inter_byte_timeout, exclusive=exclusive, **kwargs)
+        self.axis = axis  # 1 or 2
 
     def reset(self) -> bool:
         ret =  self.return_origin("-", axis=self.axis)
