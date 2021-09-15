@@ -1,10 +1,65 @@
 import time
+from types import MethodType
 from typing import Tuple, Union, Sequence, Any
 import serial
 
 
+_gsc02_opened_objects = dict()
+
 class GSC02(serial.Serial):
     """Wrapper for GSC-02 controller"""
+
+    def open(self):
+        """Open port with current settings. 
+        This may throw a SerialException if the port cannot be opened.
+        
+        The difference with the original `serial.Serial` class is 
+        that it *only* executed when opening a *new* port.
+        """
+        if self.port not in _gsc02_opened_objects:
+            super().open()
+            if self.is_open:
+                _gsc02_opened_objects[self.port] = self
+
+    def close(self):
+        """Close port"""
+        super().close()
+        
+        if self.port in _gsc02_opened_objects:
+            del _gsc02_opened_objects[self.port]
+
+    def __getattribute__(self, name):
+        if name in ["port", "_port"]:
+            return super().__getattribute__(name)
+
+        # If opened object does not exist,
+        if self.port not in _gsc02_opened_objects:
+            return super().__getattribute__(name)
+        
+        opened_object = _gsc02_opened_objects[self.port]
+        
+        # If this object is equal to opened object,
+        if id(self) == id(opened_object):
+            return super().__getattribute__(name)
+
+        # If the attribute was added in sub-class,
+        # (opened object hasn't been contained)
+        if not hasattr(super(), name):
+            return super().__getattribute__(name)
+
+        # Check override
+        this_attr = super().__getattribute__(name)
+        opened_attr = getattr(opened_object, name)
+        if isinstance(this_attr, MethodType):
+            is_overridden = this_attr.__func__ != opened_attr.__func__
+        else:
+            is_overridden = this_attr != opened_attr
+        
+        # Rturn overridden attribute
+        if is_overridden:
+            return super().__getattribute__(name)
+
+        return opened_object.__getattribute__(name)
 
     def raw_command(self, cmd: str) -> Union[bool, Any]:
         """Send command to controller
