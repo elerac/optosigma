@@ -1,10 +1,14 @@
 # OptoSigma Motorized Stages Control
 
-This project provides wrappers to control [OptoSigma (Sigma-Koki) motorized stages](https://jp.optosigma.com/en_jp/motorized-stages.html) in Python. The wrapper is designed for 1) controllers and 2) stages.
+This project provides wrappers to control [OptoSigma (Sigma-Koki) motorized stages](https://jp.optosigma.com/en_jp/motorized-stages.html) in Python. 
 
-(1) The controller type wrapper sends commands to the controller (*i.e.*, GSC-01 and GSC-02) through [pySerial](https://github.com/pyserial/pyserial). It supports all commands of the SHOT series and provides practical methods and attributes.
+The wrapper is designed for 1) controllers and 2) stages.
 
-(2) The stage type wrapper inherits the controller type wrapper. Hence, you can send not only basic commands but also use stage-specific methods and attributes.
+1. The controller type wrapper sends commands to the controller (*i.e.*, GSC-01 and GSC-02) through [pySerial](https://github.com/pyserial/pyserial). It supports all commands of the SHOT series and provides practical methods and attributes.
+
+2. The stage type wrapper inherits the controller type wrapper. Hence, you can send not only basic commands but also use stage-specific methods and attributes.
+
+Thanks to these two types of wrapper, you can [easily send the command to the controller](#basic-usage-of-gsc01-class), [extend the wrapper to various stages](#extend-to-your-stage), and [control intricately connected stages flexibly](#multiple-axis-stage-controller).
 
 ## Supported Controllers and Stages
 | [GSC-01](https://jp.optosigma.com/en_jp/motorized-stages/controllers-drivers/single-axis-stage-controller/gsc-01.html) | [GSC-02](https://jp.optosigma.com/en_jp/motorized-stages/controllers-drivers/2-axis-stage-controller-half-step/gsc-02.html) | [OSMS-60YAW](https://jp.optosigma.com/en_jp/catalog/product/view/id/12617/s/osms-60yaw/category/456/) |
@@ -13,7 +17,6 @@ This project provides wrappers to control [OptoSigma (Sigma-Koki) motorized stag
 | Controller | Controller | Stage | 
 | [[README]](documents/GSC-01.md) | [[README]](documents/GSC-02.md) | [[README]](documents/OSMS-60YAW.md) |
 | [[Manual]](https://jp.optosigma.com/html/en_jp/software/motorize/manual_en/GSC-01_En.pdf) | [[Manual]](https://jp.optosigma.com/html/en_jp/software/motorize/manual_en/GSC-02.pdf) | |
-| | | |
 
 | [OSMS-60A60](https://jp.optosigma.com/en_jp/osms-60a60.html) | [OSMS60-5ZF](https://jp.optosigma.com/en_jp/osms60-5zf.html) | [PWA-100](http://www.twin9.co.jp/product/holders-list/mirror-list-2-2/pwa-100/) | 
 | :-: | :-: | :-: |
@@ -70,20 +73,14 @@ class OSMS60YAW(GSC02):
     @property
     def degree(self):
         position = getattr(self, f"position{self.axis}")
-        degree = self.pos2deg(position)
+        degree = (position % (360.0 / self.degree_per_pulse)) * self.degree_per_pulse
         return degree
     
     @degree.setter
     def degree(self, target_degree):
-        target_position = self.deg2pos(target_degree)
+        target_position = int(target_degree / self.degree_per_pulse)
         setattr(self, f"position{self.axis}", target_position)
         self.sleep_until_stop()
-
-    def pos2deg(self, position):
-        return (position % (360.0 / self.degree_per_pulse)) * self.degree_per_pulse
-
-    def deg2pos(self, degree):
-        return int(degree / self.degree_per_pulse)
 
 
 stage = OSMS60YAW("/dev/tty.usbserial-FTRWB1RN", axis=1)
