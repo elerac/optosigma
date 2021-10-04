@@ -18,20 +18,15 @@ class PWA100(GSC01):
     @property
     def degree(self) -> float:
         """Get current angle [deg]"""
-        position = self.get_position()
+        position = self.position
         degree = self.pos2deg(position)
         return degree
     
     @degree.setter
     def degree(self, target_degree: float):
         """Move stage to target angle [deg]"""
-        current_degree = self.degree
-        target_degree %= 360
-        relative_degree = (target_degree - current_degree) % 360
-        relative_position = self.deg2pos(relative_degree)
-
-        self.set_relative_pulse(relative_position)
-        self.driving()
+        target_position = self.deg2pos(target_degree)
+        self.position = target_position
         if self.is_sleep_until_stop:
             self.sleep_until_stop()
 
