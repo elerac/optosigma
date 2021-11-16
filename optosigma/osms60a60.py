@@ -1,4 +1,5 @@
 import time
+from typing import Literal
 import serial
 from .gsc02 import GSC02
 
@@ -28,12 +29,16 @@ class OSMS60A60(GSC02):
         super().__init__(port=port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits, timeout=timeout, xonxoff=xonxoff, rtscts=rtscts, write_timeout=write_timeout, dsrdtr=dsrdtr, inter_byte_timeout=inter_byte_timeout, exclusive=exclusive, **kwargs)
         self.axis = axis  # 1 or 2
 
-    def reset(self) -> bool:
-        ret1 = self.return_origin("-", axis=self.axis)
+    def reset(self, direction: Literal["+", "-"] = "+") -> bool:
+        ret1 = self.return_origin(direction, axis=self.axis)
         if self.is_sleep_until_stop:
             self.sleep_until_stop()
         
-        self.degree += (14.0 - self.offset)
+        if direction == "+":
+            self.degree -= (14.0 - self.offset)
+        elif direction == "-":
+            self.degree += (14.0 - self.offset)
+            
         ret2 = self.set_logical_zero(axis=self.axis)
         time.sleep(0.01)
         return all([ret1, ret2])
