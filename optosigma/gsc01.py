@@ -290,7 +290,7 @@ class GSC01(serial.Serial):
 
         The initial values are as follows:
           Minimum speed S                     500[PPS]
-          Maximum speed F                     50000[PPS]
+          Maximum speed F                     5000[PPS]
           Acceleration/ Deceleration Time     200[mS]
         (* If setting Configuration Program, obey the value.)
 
