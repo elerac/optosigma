@@ -8,3 +8,5 @@ from .osms2085 import OSMS2085
 from .osms2085xyz import OSMS2085XYZ
 
 from .pwa100 import PWA100
+
+from .utils import OptosigmaWarning

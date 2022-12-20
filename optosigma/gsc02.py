@@ -1,7 +1,10 @@
 import time
+import warnings
 from types import MethodType
 from typing import Tuple, Union, Sequence, Any
 import serial
+
+from .utils import OptosigmaWarning
 
 
 _gsc02_opened_objects = dict()
@@ -78,10 +81,15 @@ class GSC02(serial.Serial):
         """
         self.write(cmd.encode())
         self.write(b"\r\n")
-        
-        if cmd[:2] in ["Q:", "!:", "?:"]:
-            # status check commands (Q:, !:, ?:)
-            return self.readline().decode()[:-2]  # -2: Remove terminator characters (CR + LF)        
+
+        if cmd[:2] in ["Q:", "!:", "?:"]:  # Status check commands (Q:, !:, ?:)
+            ret = self.readline().decode()
+            is_timeout = ret == ""
+            if not is_timeout:
+                return ret[:-2]  # -2: Remove terminator characters (CR + LF)
+            else:
+                warnings.warn(f"Timeout occurred. The same command `{cmd}` is to be sent.", OptosigmaWarning, stacklevel=2)
+                return self.raw_command(cmd)
         else:
             return self.is_last_command_success
 
